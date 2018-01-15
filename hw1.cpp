@@ -17,7 +17,7 @@ Function that you are required to implement (stub).
 void compute_overall_score(std::string inputFile, std::string outputFile) {
 
 	std::ifstream input(inputFile);
-	std::vector<int> grade;
+	std::vector<int> grade(11);
 	int value;
 
 	while (input >> value)
