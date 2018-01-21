@@ -6,62 +6,36 @@
 int Time::hour_in_day = 0;
 int Time::minute_in_hour = 0;
 
-// Time constructor, initialize time_hours 
-// and time_minutes 
-// Parameters: int hours and int minutes
-Time::Time(int hours, int minutes)
-{
-	if (minutes >= minute_in_hour)
-	{
-		time_hours = hours + (minutes - (minutes % minute_in_hour)) / 
-			minute_in_hour;
-		time_minutes = minutes % minute_in_hour;
-	}
-	else
-	{
-		time_hours = hours;
-		time_minutes = minutes;
-	}
-}
-
-// Time constructor, initialize time_hours 
-// and time_minutes 
-// Parameters: int minutes
-Time::Time(int minutes)
-{
-	time_hours = 0;
-	if (minutes >= minute_in_hour)
-	{
-		time_hours = time_hours + (minutes - (minutes % minute_in_hour)) / 
-			minute_in_hour;
-		time_minutes = minutes % minute_in_hour;
-	}
-	else
-	{
-		time_hours = 0;
-		time_minutes = minutes;
-	}
-}
-
-// Time constructor, initialize time_hours 
-// and time_minutes 
+// Time constructor, initialize time_hours
+// and time_minutes
 // Parameters: none
 Time::Time()
 {
-	time_hours = 0;
-	time_minutes = 0;
+	time = 0.0;
 }
 
-// TODO: Fix the rounding in the output!!!
+// Time constructor, initialize time_hours
+// and time_minutes
+// Parameters: int minutes
+Time::Time(int minutes)
+{
+	time = static_cast<double>(minutes) / minute_in_hour;
+}
 
-// Time constructor, initialize time_hours 
-// and time_minutes 
+// Time constructor, initialize time_hours
+// and time_minutes
 // Parameters: double hours
 Time::Time(double hours)
 {
-	hours = round (hours*10)/10;
-	time_hours = static_cast<int>(hours);
-	time_minutes = ((hours - time_hours) * minute_in_hour);
+	time = hours - (floor(hours / hour_in_day) * hour_in_day);
+}
+
+// Time constructor, initialize time_hours
+// and time_minutes
+// Parameters: int hours and int minutes
+Time::Time(double hours, double minutes)
+{
+	time = (fmod(hours, hour_in_day)) + (minutes / minute_in_hour);
 }
 
 // Deconstructor
@@ -72,35 +46,51 @@ Time::~Time()
 // Parameters: none
 int Time::minutes()
 {
-	return time_minutes;
+	return static_cast<int>(time * 60);
 }
 
-// Set time_minutes to int i
-// Parameters: int i
+// Set minutes in hours to double i
+// Parameters: double i
 void Time::set_minutes(int i)
 {
-	if (i >= minute_in_hour)
+	double hours;
+	double frac = modf(time, &hours);
+	time = time - frac;
+
+	if (frac >= 0.9999999)
 	{
-		time_minutes = i%minute_in_hour;
+		hours += 1;
+		frac = 0;
 	}
-	else
-	{
-		time_minutes = i;
-	}
+
+	time = hours + round((i % minute_in_hour)) / minute_in_hour;
 }
 
-// Set time_hours to int i
+// Set minutes in hours to double i
+// Parameters: double i
+void Time::set_minutes(double i)
+{
+	double hours;
+	double frac = modf(time, &hours);
+	time = time + (fmod(i, minute_in_hour) / minute_in_hour) - frac;
+}
+
+// Set hours in time to int i
 // Parameters: int i
 void Time::set_hours(int i)
 {
-	if (i >= hour_in_day)
-	{
-		time_hours = i%hour_in_day;
-	}
-	else
-	{
-		time_hours = i;
-	}
+	double hours;
+	double frac = modf(time, &hours);
+	time += static_cast<double>(i % hour_in_day) - hours;
+}
+
+// Set hours in time to int i
+// Parameters: double i
+void Time::set_hours(double i)
+{
+	double hours;
+	double frac = modf(time, &hours);
+	time = time - hours + floor(i);
 }
 
 // Set the number of hours in a day
@@ -117,24 +107,61 @@ void Time::set_min_in_hr(int i)
 	minute_in_hour = i;
 }
 
+// Operator<< overloading
+// Parameters: ostream object and Time object by reference
+std::ostream& operator<<(std::ostream& out, const Time& time)
+{
+	double hours;
+	double frac = modf(time.time, &hours);
+
+	if (frac >= 0.9999999)
+	{
+		hours += 1;
+		frac = 0;
+	}
+
+	double min = round(frac * time.minute_in_hour);
+	out << hours << ":" << std::setfill('0') << std::setw(2) << min;
+	return out;
+}
+
+// Operator+ overloading
+// Parameters: int add_time and rhs Time object by reference
+Time operator+(int add_time, const Time& rhs)
+{
+	double result = rhs.time + (static_cast<double>(add_time) / rhs.minute_in_hour
+	);
+	return Time(result);
+}
+
+// Operator+ overloading
+// Parameters: double add_time and rhs Time object by reference
+Time operator+(double add_time, const Time& rhs)
+{
+	double result = rhs.time + add_time;
+	return Time(result);
+}
+
+// Operator+ overloading
+// Parameters: lhs Time object and rhs Time object by reference
+Time operator+(const Time& lhs, const Time& rhs)
+{
+	return Time(rhs.time + lhs.time);
+}
+
 // Operator+= overloading
 // Parameters: const int by reference
-Time & Time::operator+=(const int & i)
+Time& Time::operator+=(const int& i)
 {
-	this->time_hours += i/minute_in_hour;
-	this->time_minutes += i%minute_in_hour;
+	this->time += (static_cast<double>(i) / minute_in_hour);
 	return *this;
 }
 
 // Operator+= overloading
 // Parameters: const double by reference
-Time & Time::operator+=(const double & i)
+Time& Time::operator+=(const double& i)
 {
-	this->time_hours += floor(i);
-	if (((i-static_cast<int>(i))*100)>=minute_in_hour)
-	{
-		time_hours += ((i-static_cast<int>(i))*100)/minute_in_hour;
-	}
+	this->time = this->time + i;
 	return *this;
 }
 
@@ -142,71 +169,34 @@ Time & Time::operator+=(const double & i)
 // Parameters: Time object lhs and Time object rhs
 // passed by reference
 // Return true if lhs.time_hours < rhs.time_hours
-bool operator<(const Time & lhs, const Time & rhs)
+bool operator<(const Time& lhs, const Time& rhs)
 {
-	return lhs.time_hours < rhs.time_hours;
+	return lhs.time < rhs.time;
 }
 
 // Operator== overloading
 // Parameters: Time object lhs and Time object rhs
 // passed by reference
 // Return true if lhs.time_hours == rhs.time_hours
-bool operator==(const Time & lhs, const Time & rhs)
+bool operator==(const Time& lhs, const Time& rhs)
 {
-	return lhs.time_hours == rhs.time_hours;
+	return lhs.time == rhs.time;
 }
 
 // Operator>= overloading
 // Parameters: Time object lhs and Time object rhs
 // passed by reference
 // Return true if lhs.time_hours >= rhs.time_hours
-bool operator>=(const Time & lhs, const Time & rhs)
+bool operator>=(const Time& lhs, const Time& rhs)
 {
-	return lhs.time_hours >= rhs.time_hours;
+	return lhs.time >= rhs.time;
 }
 
 // Operator!= overloading
 // Parameters: Time object lhs and Time object rhs
 // passed by reference
 // Return true if lhs.time_hours != rhs.time_hours
-bool operator!=(const Time & lhs, const Time & rhs)
+bool operator!=(const Time& lhs, const Time& rhs)
 {
-	return lhs.time_hours != rhs.time_hours;
-}
-
-// Operator+ overloading
-// Parameters: lhs and rhs Time objects
-Time operator+(const Time & lhs, const Time & rhs)
-{
-	int sum_minutes = lhs.time_minutes + rhs.time_minutes;
-	int sum_hours = lhs.time_hours + rhs.time_hours; 
-	return Time(sum_hours, sum_minutes);
-}
-
-// Operator+ overloading
-// Parameters: int add_time and rhs Time object by reference
-Time operator+(int add_time, const Time & rhs)
-{
-	int sum_minutes = rhs.time_minutes + static_cast<int>(add_time); 
-	return Time(rhs.time_hours, sum_minutes);
-}
-
-// Operator+ overloading
-// Parameters: double add_time and rhs Time object by reference
-Time operator+(double add_time, const Time & rhs)
-{
-	int sum_minutes = rhs.time_minutes + floor(((add_time - static_cast<int>(add_time))
-		*Time::minute_in_hour)); 
-	int sum_hours = rhs.time_hours + add_time;
-	return Time(sum_hours, sum_minutes);
-}
-
-// Operator<< overloading
-// Parameters: ostream object and Time object by reference
-std::ostream& operator<<(std::ostream& out, const Time& time)
-{
-	out << time.time_hours % Time::hour_in_day << ":" 
-		<< (time.time_minutes) / 10
-		<< (time.time_minutes) % 10;
-	return out;
+	return lhs.time != rhs.time;
 }
